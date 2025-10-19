@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import status
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet):
@@ -20,20 +21,28 @@ class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, Gener
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
+        # Only return the cart for the logged-in user
         if getattr(self, 'swagger_fake_view', False):
             return Cart.objects.none()
         return Cart.objects.prefetch_related('items__product').filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
+        # Check if user already has a cart
         existing_cart = Cart.objects.filter(user=request.user).first()
-
         if existing_cart:
-            # Return the existing cart if it exists
             serializer = self.get_serializer(existing_cart)
             return Response(serializer.data, status=status.HTTP_200_OK)
-
-        # Else proceed with creating a new cart
+        # Otherwise create a new cart
         return super().create(request, *args, **kwargs)
+
+    # Optional: make a safe endpoint to GET the user's cart
+    @action(detail=False, methods=['get'])
+    def mine(self, request):
+        cart = Cart.objects.filter(user=request.user).first()
+        if not cart:
+            return Response({"detail": "Cart not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(cart)
+        return Response(serializer.data)
 
 
 class CartItemViewSet(ModelViewSet):
