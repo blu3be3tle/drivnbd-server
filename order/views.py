@@ -1,13 +1,13 @@
-from django.shortcuts import render
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from order import serializers as orderSz
 from order.serializers import CartSerializer, CartItemSerializer, AddCartItemSerializer, UpdateCartItemSerializer
 from order.models import Cart, CartItem, Order
+from order.services import OrderService
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
-from order.services import OrderService
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet):
@@ -15,6 +15,8 @@ class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, Gener
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
+        if not self.request.user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a cart.")
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
