@@ -95,7 +95,7 @@ WSGI_APPLICATION = "drivnbd.wsgi.app"
 DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_URL"),  # pyright: ignore[reportArgumentType]
-        conn_max_age=600,
+        conn_max_age=60,
         ssl_require=True,
     )
 }
