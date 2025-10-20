@@ -180,3 +180,7 @@ cloudinary.config(
 )
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+BACKEND_URL=config("BACKEND_URL")
+FRONTEND_URL=config("FRONTEND_URL")
