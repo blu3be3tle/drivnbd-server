@@ -7,8 +7,6 @@ from django.urls import path, include
 from django.conf import settings
 from .views import api_root_view
 
-from order.views import initiate_payment, payment_cancel, payment_fail, payment_success, HasOrderedProduct
-
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -31,13 +29,6 @@ urlpatterns = [
          cache_timeout=0), name='schema-swagger-ui'),
     path('api/redoc/', schema_view.with_ui('redoc',
          cache_timeout=0), name='schema-redoc'),
-
-    path("payment/initiate/", initiate_payment, name="initiate-payment"),
-    path("payment/success/", payment_success, name="payment-success"),
-    path("payment/fail/", payment_fail, name="payment-fail"),
-    path("payment/cancel/", payment_cancel, name="payment-cancel"),
-    path('orders/has-ordered/<int:product_id>/',
-         HasOrderedProduct.as_view()),
 ]
 
 if settings.DEBUG:
