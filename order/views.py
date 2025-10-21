@@ -7,10 +7,11 @@ from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyM
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from rest_framework.views import APIView
 from sslcommerz_lib import SSLCOMMERZ
 
 from order import serializers as orderSz
-from order.models import Cart, CartItem, Order
+from order.models import Cart, CartItem, Order, OrderItem
 from order.services import OrderService
 
 
@@ -165,8 +166,9 @@ def initiate_payment(request):
 
     response = sslcz.createSession(post_body)  # API response
 
-    if response.get("status") == 'SUCCESS': # type: ignore
-        return Response({"payment_url": response['GatewayPageURL']}) # type: ignore
+    if response.get("status") == 'SUCCESS':
+        
+        return Response({"payment_url": response['GatewayPageURL']})
     return Response({"error": "Payment initiation failed"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -189,3 +191,13 @@ def payment_cancel(request):
 def payment_fail(request):
     print("Inside fail")
     return HttpResponseRedirect(f"{main_settings.FRONTEND_URL}/dashboard/orders/")
+
+
+class HasOrderedProduct(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, product_id):
+        user = request.user
+        has_ordered = OrderItem.objects.filter(
+            order__user=user, product_id=product_id).exists()
+        return Response({"hasOrdered": has_ordered})
