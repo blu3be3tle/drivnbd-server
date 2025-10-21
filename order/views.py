@@ -1,36 +1,38 @@
+from django.conf import settings as main_settings
+from django.shortcuts import HttpResponseRedirect
+from rest_framework import status
+from rest_framework.decorators import action, api_view
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from sslcommerz_lib import SSLCOMMERZ
+
 from order import serializers as orderSz
-from order.serializers import CartSerializer, CartItemSerializer, AddCartItemSerializer, UpdateCartItemSerializer
 from order.models import Cart, CartItem, Order
 from order.services import OrderService
-from django.shortcuts import HttpResponseRedirect
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.decorators import action, api_view
-from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import status
-from sslcommerz_lib import SSLCOMMERZ
-from django.conf import settings as main_settings
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet):
-    serializer_class = CartSerializer
+    serializer_class = orderSz.CartSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        if not self.request.user.is_authenticated:
-            raise PermissionDenied("Authentication required to create a cart.")
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
         # Only return the cart for the logged-in user
         if getattr(self, 'swagger_fake_view', False):
             return Cart.objects.none()
-        return Cart.objects.prefetch_related('items__product').filter(user=self.request.user)
+        return (
+            Cart.objects
+            .prefetch_related('items__product')
+            .filter(user=self.request.user)
+        )
 
     def create(self, request, *args, **kwargs):
-        # Check if user already has a cart
+        # If user already has a cart, return it
         existing_cart = Cart.objects.filter(user=request.user).first()
         if existing_cart:
             serializer = self.get_serializer(existing_cart)
@@ -38,7 +40,6 @@ class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, Gener
         # Otherwise create a new cart
         return super().create(request, *args, **kwargs)
 
-    # Optional: make a safe endpoint to GET the user's cart
     @action(detail=False, methods=['get'])
     def mine(self, request):
         cart = Cart.objects.filter(user=request.user).first()
@@ -49,24 +50,37 @@ class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, Gener
 
 
 class CartItemViewSet(ModelViewSet):
+    permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
-            return AddCartItemSerializer
+            return orderSz.AddCartItemSerializer
         elif self.request.method == 'PATCH':
-            return UpdateCartItemSerializer
-        return CartItemSerializer
+            return orderSz.UpdateCartItemSerializer
+        return orderSz.CartItemSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         if getattr(self, 'swagger_fake_view', False):
             return context
-
-        return {'cart_id': self.kwargs.get('cart_pk')}
+        context['cart_id'] = self.kwargs.get('cart_pk')
+        return context
 
     def get_queryset(self):
-        return CartItem.objects.select_related('product').filter(cart_id=self.kwargs.get('cart_pk'))
+        # Only items from the requesting user's cart
+        return (
+            CartItem.objects
+            .select_related('product', 'cart')
+            .filter(cart_id=self.kwargs.get('cart_pk'), cart__user=self.request.user)
+        )
+
+    def perform_create(self, serializer):
+        # Prevent adding to someone else’s cart
+        cart_id = self.kwargs.get('cart_pk')
+        if not Cart.objects.filter(id=cart_id, user=self.request.user).exists():
+            raise PermissionDenied("Not your cart.")
+        super().perform_create(serializer)
 
 
 class OrderViewSet(ModelViewSet):
@@ -85,9 +99,10 @@ class OrderViewSet(ModelViewSet):
             order, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({'status': f'Order status updated to {request.data['status']}'})
+        return Response({'status': f"Order status updated to {request.data.get('status')}"})
 
     def get_permissions(self):
+        # Admin-only for destructive or status-changing actions
         if self.action in ['update_status', 'destroy']:
             return [IsAdminUser()]
         return [IsAuthenticated()]
@@ -102,9 +117,12 @@ class OrderViewSet(ModelViewSet):
         return orderSz.OrderSerializer
 
     def get_serializer_context(self):
+        context = super().get_serializer_context()
         if getattr(self, 'swagger_fake_view', False):
-            return super().get_serializer_context()
-        return {'user_id': self.request.user.pk, 'user': self.request.user}
+            return context
+        context.update({'user_id': self.request.user.pk,
+                       'user': self.request.user})
+        return context
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -147,8 +165,8 @@ def initiate_payment(request):
 
     response = sslcz.createSession(post_body)  # API response
 
-    if response.get("status") == 'SUCCESS':
-        return Response({"payment_url": response['GatewayPageURL']})
+    if response.get("status") == 'SUCCESS': # type: ignore
+        return Response({"payment_url": response['GatewayPageURL']}) # type: ignore
     return Response({"error": "Payment initiation failed"}, status=status.HTTP_400_BAD_REQUEST)
 
 
