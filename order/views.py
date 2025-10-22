@@ -140,8 +140,8 @@ def initiate_payment(request):
     order_id = request.data.get("orderId")
     num_items = request.data.get("numItems")
 
-    settings = {'store_id': 'phima67ddc8dba290b',
-                'store_pass': 'phima67ddc8dba290b@ssl', 'issandbox': True}
+    settings = {'store_id': 'drivn68f631dac0979',
+                'store_pass': 'drivn68f631dac0979@ssl', 'issandbox': True}
     sslcz = SSLCOMMERZ(settings)
     post_body = {}
     post_body['total_amount'] = amount
@@ -157,7 +157,7 @@ def initiate_payment(request):
     post_body['cus_add1'] = user.address
     post_body['cus_city'] = "Dhaka"
     post_body['cus_country'] = "Bangladesh"
-    post_body['shipping_method'] = "Courier"
+    post_body['shipping_method'] = "NO"
     post_body['multi_card_name'] = ""
     post_body['num_of_item'] = num_items
     post_body['product_name'] = "E-commerce Products"
