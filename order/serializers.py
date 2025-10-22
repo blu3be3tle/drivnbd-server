@@ -23,8 +23,8 @@ class AddCartItemSerializer(serializers.ModelSerializer):
 
     def save(self, **kwargs):
         cart_id = self.context['cart_id']
-        product_id = self.validated_data['product_id'] # type: ignore
-        quantity = self.validated_data['quantity'] # type: ignore
+        product_id = self.validated_data['product_id']  # type: ignore
+        quantity = self.validated_data['quantity']  # type: ignore
 
         try:
             cart_item = CartItem.objects.get(
@@ -33,7 +33,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
             self.instance = cart_item.save()
         except CartItem.DoesNotExist:
             self.instance = CartItem.objects.create(
-                cart_id=cart_id, **self.validated_data) # type: ignore
+                cart_id=cart_id, **self.validated_data)  # type: ignore
 
         return self.instance
 
@@ -71,10 +71,12 @@ class CartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = ['id', 'user', 'items', 'total_price']
+        read_only_fields = ['user']
 
     def get_total_price(self, cart: Cart):
         return sum(
-            [item.product.price * item.quantity for item in cart.items.all()]) # type: ignore
+            # type: ignore
+            [item.product.price * item.quantity for item in cart.items.all()])
 
 
 class CreateOrderSerializer(serializers.Serializer):
@@ -116,7 +118,7 @@ class UpdateOrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ['status']
 
- 
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
 
