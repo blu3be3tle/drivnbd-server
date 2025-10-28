@@ -22,7 +22,7 @@ class ProductViewSet(ModelViewSet):
      - Support searching by name, description, and category
      - Support ordering by price and updated_at
     """
-    queryset = Product.objects.all()
+    queryset = Product.objects.prefetch_related('images').all()
     serializer_class = ProductSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
