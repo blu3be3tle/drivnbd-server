@@ -35,6 +35,7 @@ ENV/
 local_settings.py
 secret_key.txt
 jwt.json
+.env.docker
 
 # IDE and editor files
 .DS_Store
