@@ -209,35 +209,3 @@ MIT – see [LICENSE](LICENSE)
 Built with ❤️ in Dhaka for scalable, beautiful e-commerce.
 
 Happy shopping & coding! 👕✨
-
-
-
-
-```mermaid
-architecture-beta
-    group frontend(browser)[Frontend (React SPA)]
-        service spa(browser)[React App] in frontend
-
-    group api(cloud)[API Layer (DRF)]
-        service drf(cloud)[Django REST API] in api
-
-    group backend(cloud)[Backend Apps]
-        service users(database)[users/ - CustomUser, JWT] in backend
-        service store(database)[store/ - Product, Category] in backend
-        service order(database)[order/ - Cart, Order, Payment] in backend
-
-    group data(cloud)[Data & External]
-        service db(database)[PostgreSQL (Supabase)] in data
-        service cloudinary(database)[Cloudinary (Images + CDN)] in data
-        service sslcommerz(database)[SSLCommerz Gateway] in data
-
-    spa:R --> L:drf : JWT Bearer Token
-    drf:R --> L:users
-    drf:R --> L:store
-    drf:R --> L:order
-    users:R --> L:db
-    store:R --> L:db
-    order:R --> L:db
-    store:R --> L:cloudinary : Image URLs
-    order:R --> L:sslcommerz : Initiate Session + Redirect
-    sslcommerz:R --> L:order : IPN/Webhook (status update)
